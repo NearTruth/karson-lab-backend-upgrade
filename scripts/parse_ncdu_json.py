@@ -76,7 +76,7 @@ def write_summary_table_file(files_list, outfile_name):
 
 
 def get_user_owner_name(uid):
-    """return the username of the uid"""
+    """return the username of the uid (untested)"""
     return pwd.getpwuid(uid).pw_name
 
 
