@@ -1,0 +1,50 @@
+1. Read file owner name from ncdu output or file path (3-4 hours)
+Success: figure out a way to obtain the username from the uid field of the ncdu output
+
+
+2. Test unix mail utility reading from files (3-4 hours)
+Success: the following commands successfully sends emails to the specified inbox
+echo "body" | mail -s "subject" clarktest989@gmail.com
+
+echo "bodyfile" > emailtest.txt
+cat emailtest.txt | mail -s "subjectfile" clarktest989@gmail.com
+rm emailtest.txt
+
+3. Integrate chosen mail utility with current script (3-4 hours)
+Success: Successfully sends emails to the owners of flagged files when the cron script is run. Format emails in the following way.
+
+email format:
+	subject line: 
+	Files automatically marked for deletion for {_username}
+
+	message:
+	Hi {_username},
+	please review and delete unwanted files:
+	
+	file1_path
+	file2_path
+	file3_path
+	file4_path
+	
+	Thank you
+
+4. Make sure the script does not break when confronted with various issues (3-4 hours)
+Success:
+create test cases for large inputs (consider splitting long emails into multiple shorter emails) - (need more information about the server)
+
+
+create test cases for invalid usernames/emails, make sure the rest of the script still runs
+
+create test cases for sending to large number of recipients - (need more information about the server)
+
+if the mail utility does not work, make sure the basic functionality of the script is not interrupted
+
+compare the speed of the new and old scripts
+
+make sure the script actually runs in its intended environment
+
+5. Parse output of "getent group karsanlab"
+Success: create script that returns active users in Karsanlab 
+
+(optional) 6. Investigate the possibility of using python to send mail (3-4 hours)
+Success: create python script that can send an email with a message to specified inbox
