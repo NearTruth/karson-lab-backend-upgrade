@@ -14,6 +14,8 @@ import json
 import os
 import pwd
 import stat
+from send_emails import send_emails_from_files_list
+
 
 from datetime import datetime, timedelta
 
@@ -93,6 +95,7 @@ def main():
     improper_permissions_files = []
     total_space = 0
 
+
     # Parse JSON
     with open(input_json, 'r') as input_file:
         for line in input_file:
@@ -105,13 +108,14 @@ def main():
                     total_space += size
                     directory = '/'.join(directory for directory in data['dirs'])
                     full_path = os.path.join(directory, name)
-                    if large_file(size, size_threshold):
+                    if large_file(size, size_threshold):  # store an additional uid into the lists
                         large_files.append(
-                            [full_path, humanfriendly.format_size(size, binary=True)]
+                            [full_path, humanfriendly.format_size(size, binary=True), user_owner]
                         )
-                    if old_intermediate_file(name, date, days_window):
+                    if old_intermediate_file(name, date, days_window):  # store an additional uid
+                        # into the lists
                         old_intermediate_files.append(
-                            [full_path, humanfriendly.format_size(size, binary=True)]
+                            [full_path, humanfriendly.format_size(size, binary=True), user_owner]
                         )
                     if group_owner == USERS_GROUP_ID:
                         # Get the owner of the file
@@ -121,6 +125,9 @@ def main():
             # But lack a "mode" key. Account for this.
             except KeyError:
                 pass
+
+
+
 
     # Write the summary files
     large_files_outfile = f'{input_json}.large_files.tsv'
@@ -139,6 +146,10 @@ def main():
         if improper_permissions_files:
             for file in improper_permissions_files:
                 writer.writerow(file)
+
+    # send emails
+    send_emails_from_files_list(large_files, old_intermediate_files)
+
 
 
 def _parse_args():

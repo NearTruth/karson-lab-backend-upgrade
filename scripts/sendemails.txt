@@ -10,4 +10,3 @@ subprocess.run("echo 'bodyfile-python' > emailtest.txt", shell=True)
 subprocess.run("cat emailtest.txt | mail -s 'subjectfile-python' clarktest989@gmail.com",
                shell=True)
 subprocess.run("rm emailtest.txt", shell=True)
-# use of shell=True is discouraged unless the input can be trusted              
