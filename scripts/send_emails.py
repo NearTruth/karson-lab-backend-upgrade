@@ -5,11 +5,10 @@ module sends emails to specified receivers
 for use with parse_ncdu_json.py
 """
 
-import pwd
 import subprocess
 import humanfriendly
 
-MESSAGE_LENGTH = 100
+MESSAGE_LENGTH = 50
 INACTIVE_USER = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
@@ -29,10 +28,12 @@ def get_active_users():
         pass
     return users
 
+def send_email_dev(username, subject, message):
+    """
+    prints the subject, message, and username to the console
+    """
+    print(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca")
 
-def get_user_owner_name(uid):
-    """return the username of the uid"""
-    return pwd.getpwuid(uid).pw_name
 
 
 def send_email(username, subject, message):
@@ -43,16 +44,17 @@ def send_email(username, subject, message):
     """
     # subject = f"Files automatically marked for deletion for {username}"
     try:  # be careful shell=True is a security risk
-        subprocess.run(f"echo '{message}' | mail -s '{subject}' {username}@bcgsc.ca", shell=True)
+        subprocess.run(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca", shell=True)
     except Exception:  # handle exceptions
         pass
 
 
-def make_dict_files_by_uid(file_list):
+def make_dict_files_by_username(file_list):
     """
-    input format: lst([path, size, uid])
-    given list of files, return a dictionary with uid as key and a list of files as value
-    output format: dict{uid: lst(file)}
+    input format: lst([path, size, username])
+    given list of files, return a dictionary with username as key and a sorted list of files as
+    value
+    output format: dict{username: lst(file)}
     """
     user_dict = {}
     for f in file_list:
@@ -60,6 +62,8 @@ def make_dict_files_by_uid(file_list):
             user_dict[f[2]] = [f]  # create key value pair
         else:
             user_dict[f[2]].append(f)  # update key value pair
+    for username in user_dict:
+        user_dict[username] = sort_files_list_by_size(user_dict[username])  # sort list
     return user_dict
 
 
@@ -97,8 +101,8 @@ def format_and_send_email(username, sorted_files_list, active_user=True):
     subject = f"Files automatically marked for deletion for {username}"
     message_header = \
     f"""Hi {username},\n
-    please review and delete unwanted files:\n
-    """
+please review and delete unwanted files:\n
+"""
     line_counter = 0
     message_body = ""
     for f in sorted_files_list:
@@ -108,11 +112,11 @@ def format_and_send_email(username, sorted_files_list, active_user=True):
         else:  # line_counter == MESSAGE_LENGTH
             message = message_header + message_body
             if active_user:
-                send_email(username, subject, message)
+                send_email(username, subject, message)  # send message of MESSAGE_LENGTH lines
             else:
                 send_email(INACTIVE_USER, subject, message)
                 
-            message = ""
+            message_body = ""
             line_counter = 0
 
     # send remaining message
@@ -123,6 +127,54 @@ def format_and_send_email(username, sorted_files_list, active_user=True):
         send_email(INACTIVE_USER, subject, message)
 
 
+def format_and_send_email_dev(username, sorted_files_list, active_user=True):
+    """
+    format the subject and message then send the email to {username}@bcgsc.ca if the user is an
+    active user, or to {INACTIVE_USER}@bcgsc.ca if not
+
+    sorted_files_list format: lst([file_path, size, uid])
+
+    format files_list into the following way
+    subject line:
+	Files automatically marked for deletion for {_username}
+
+	message:
+	Hi {_username},
+	please review and delete unwanted files:
+
+	file1_path (size)
+	file2_path (size)
+	file3_path (size)
+	file4_path (size)
+    """
+
+    subject = f"Files automatically marked for deletion for {username}"
+    message_header = \
+        f"""Hi {username},\n
+please review and delete unwanted files:\n
+"""
+    line_counter = 0
+    message_body = ""
+    for f in sorted_files_list:
+        if line_counter < MESSAGE_LENGTH:
+            message_body = message_body + f"{f[0]} ({f[1]})\n"
+            line_counter = line_counter + 1
+        else:  # line_counter == MESSAGE_LENGTH
+            message = message_header + message_body
+            if active_user:
+                send_email_dev(username, subject, message)  # send message of MESSAGE_LENGTH lines
+            else:
+                send_email_dev(INACTIVE_USER, subject, message)
+
+            message_body = ""
+            line_counter = 0
+
+    # send remaining message
+    message = message_header + message_body
+    if active_user:
+        send_email_dev(username, subject, message)
+    else:
+        send_email_dev(INACTIVE_USER, subject, message)
 
 
 def send_emails_from_files_list(*files_lists):
@@ -132,15 +184,28 @@ def send_emails_from_files_list(*files_lists):
     size, check that the username is an active user in karsanlab, format email subject and 
     message, then send the email
     """
+    active_users = get_active_users()  # get active users of karsan lab
     for files_list in files_lists:
         if files_list:
-            files_dict = make_dict_files_by_uid(files_list)  # index files by user
-            active_users = get_active_users()  # get active users of karsan lab
-            for uid in files_dict:
-                username = get_user_owner_name(uid)  # get username
-                files_dict[uid] = sort_files_list_by_size(files_dict[uid])  # sort list
-                format_and_send_email(username, files_dict[uid], username in active_users)
+            files_dict = make_dict_files_by_username(files_list)  # index files by user
+            for username in files_dict:
+                format_and_send_email(username, files_dict[username], username in active_users)
                 # send emails
 
-                
+
+def send_emails_from_files_list_dev(*files_lists):
+    # reads files_lists as a tuple containing various file_lists
+    """
+    given file_list, group files by user using a dictionary, sort each list in the dictionary by
+    size, check that the username is an active user in karsanlab, format email subject and
+    message, then send the email  
+    """
+    #active_users = get_active_users()  # get active users of karsan lab
+    for files_list in files_lists:
+        if files_list:
+            files_dict = make_dict_files_by_username(files_list)  # index files by user
+            for username in files_dict:
+                format_and_send_email_dev(username, files_dict[username], True)
+                # send emails
+
 
