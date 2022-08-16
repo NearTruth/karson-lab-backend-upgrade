@@ -30,7 +30,7 @@ def get_active_users():
 
 def send_email_dev(username, subject, message):
     """
-    prints the subject, message, and username to the console
+    prints the subject, message, and username to stdout
     """
     print(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca")
 
@@ -129,7 +129,7 @@ please review and delete unwanted files:\n
 
 def format_and_send_email_dev(username, sorted_files_list, active_user=True):
     """
-    format the subject and message then send the email to {username}@bcgsc.ca if the user is an
+    format the subject and message then print the email to {username}@bcgsc.ca if the user is an
     active user, or to {INACTIVE_USER}@bcgsc.ca if not
 
     sorted_files_list format: lst([file_path, size, uid])
@@ -151,8 +151,9 @@ def format_and_send_email_dev(username, sorted_files_list, active_user=True):
     subject = f"Files automatically marked for deletion for {username}"
     message_header = \
         f"""Hi {username},\n
-please review and delete unwanted files:\n
-"""
+    please review and delete unwanted files:\n
+    """
+
     line_counter = 0
     message_body = ""
     for f in sorted_files_list:
@@ -198,7 +199,7 @@ def send_emails_from_files_list_dev(*files_lists):
     """
     given file_list, group files by user using a dictionary, sort each list in the dictionary by
     size, check that the username is an active user in karsanlab, format email subject and
-    message, then send the email  
+    message, then print the email to stdout
     """
     #active_users = get_active_users()  # get active users of karsan lab
     for files_list in files_lists:
