@@ -12,6 +12,9 @@ NCDU_JSONS_DIRECTORY=ncdu_jsons
 NCDU_EXPORT_REPO=git_repos/ncdu-export
 KARSANLAB_BITBUCKET_REPO=git_repos/KARSANBIO-2205_space_monitoring
 TRACKING_TABLE=on_going_space_report.tsv
+EXCLUDE_DIRECTORY=/projects/karsanlab/.snapshot
+DIRECTORY_ROOT=/projects/karsanlab/
+
 DATE=$(date --iso-8601)
 
 echo Started space audit at $(date -Iseconds)
@@ -20,7 +23,7 @@ cd ${SPACE_MONITORING_DIRECTORY}
 eval "$(/projects/karsanlab/software/linux-x86_64-centos7/anaconda3/bin/conda shell.bash hook)"
 conda activate ./env_space_monitoring
 mkdir -p ${PARSED_DATA_DIRECTORY}/${DATE}
-ncdu -0 -x -e -r --exclude /projects/karsanlab/.snapshot -o - /projects/karsanlab/ | gzip > ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.json.gz
+ncdu -0 -x -e -r --exclude ${EXCLUDE_DIRECTORY} -o -${DIRECTORY_ROOT}  | gzip > ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.json.gz
 zcat ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.json.gz | iconv -f utf-8 -t utf-8 -c - > ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.iconv.json
 python ${NCDU_EXPORT_REPO}/flatten.py --dirs array ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.iconv.json > ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.flat.json
 python ${KARSANLAB_BITBUCKET_REPO}/scripts/parse_ncdu_json.py --input ${NCDU_JSONS_DIRECTORY}/${DATE}_ncdu.flat.json
