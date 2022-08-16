@@ -13,7 +13,7 @@ INACTIVE_USER = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
 DEV = True
-TEST_ACTIVE_USER_SET = set()
+TEST_ACTIVE_USER_SET = {"user2"}
 
 def get_active_users():
     """
