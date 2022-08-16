@@ -73,11 +73,14 @@ def write_summary_table_file(files_list, outfile_name):
         if files_list:
             for file in sort_files_list_by_size(files_list):
                 writer.writerow(file)
+<<<<<<< Updated upstream
 
 
 def get_user_owner_name(uid):
     """return the username of the uid (untested)"""
     return pwd.getpwuid(uid).pw_name
+=======
+>>>>>>> Stashed changes
 
 
 def main():
