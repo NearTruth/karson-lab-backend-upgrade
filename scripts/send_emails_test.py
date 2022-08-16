@@ -54,4 +54,10 @@ def test_email_from_list_short():
     lst = create_short_files_list()
     send_emails.send_emails_from_files_list(lst)
 
-test_email_from_list_long()
+def test_multiple_lists():
+    lst1 = create_long_files_list()
+    lst2 = create_short_files_list()
+    send_emails.send_emails_from_files_list(lst1, lst2)
+
+
+test_multiple_lists()
