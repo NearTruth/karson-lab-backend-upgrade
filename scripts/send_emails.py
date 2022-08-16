@@ -12,28 +12,27 @@ MESSAGE_LENGTH = 50
 INACTIVE_USER = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
+DEV = True
+TEST_ACTIVE_USER_SET = set()
 
 def get_active_users():
     """
     returns the usernames of active users of karsanlab by parsing the output of getent group
     karsanlab as a set
     """
-    users = set()
-    try:
-        getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
-        users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
-        for user in IGNORE_USERS:
-            users.discard(user)
-    except Exeption:
-        pass
-    return users
-
-def send_email_dev(username, subject, message):
-    """
-    prints the subject, message, and username to stdout
-    """
-    print(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca")
-
+    
+    if DEV: # DEV mode turns off shell calls and prints emails to stdout
+        return TEST_ACTIVE_USER_SET
+    else:
+        users = set()
+        try:
+            getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
+            users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
+            for user in IGNORE_USERS:
+                users.discard(user)
+        except Exeption:
+            pass
+        return users
 
 
 def send_email(username, subject, message):
@@ -42,11 +41,14 @@ def send_email(username, subject, message):
 
     message should contain no more than 100 lines of filenames
     """
-    # subject = f"Files automatically marked for deletion for {username}"
-    try:  # be careful shell=True is a security risk
-        subprocess.run(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca", shell=True)
-    except Exception:  # handle exceptions
-        pass
+    
+    if DEV: # DEV mode turns off shell calls and prints emails to stdout
+        print(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca")
+    else:
+        try:  # be careful shell=True is a security risk
+            subprocess.run(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca", shell=True)
+        except Exception:  # handle exceptions
+            pass
 
 
 def make_dict_files_by_username(file_list):
@@ -106,16 +108,15 @@ please review and delete unwanted files:\n
     line_counter = 0
     message_body = ""
     for f in sorted_files_list:
-        if line_counter < MESSAGE_LENGTH:
-            message_body = message_body + f"{f[0]} ({f[1]})\n"
-            line_counter = line_counter + 1
-        else:  # line_counter == MESSAGE_LENGTH
+        # print(line_counter)
+        message_body = message_body + f"{f[0]} ({f[1]})\n"
+        line_counter = line_counter + 1
+        if line_counter == 50:  # line_counter == MESSAGE_LENGTH
             message = message_header + message_body
             if active_user:
                 send_email(username, subject, message)  # send message of MESSAGE_LENGTH lines
             else:
                 send_email(INACTIVE_USER, subject, message)
-                
             message_body = ""
             line_counter = 0
 
@@ -126,56 +127,6 @@ please review and delete unwanted files:\n
     else:
         send_email(INACTIVE_USER, subject, message)
 
-
-def format_and_send_email_dev(username, sorted_files_list, active_user=True):
-    """
-    format the subject and message then print the email to {username}@bcgsc.ca if the user is an
-    active user, or to {INACTIVE_USER}@bcgsc.ca if not
-
-    sorted_files_list format: lst([file_path, size, uid])
-
-    format files_list into the following way
-    subject line:
-	Files automatically marked for deletion for {_username}
-
-	message:
-	Hi {_username},
-	please review and delete unwanted files:
-
-	file1_path (size)
-	file2_path (size)
-	file3_path (size)
-	file4_path (size)
-    """
-
-    subject = f"Files automatically marked for deletion for {username}"
-    message_header = \
-        f"""Hi {username},\n
-    please review and delete unwanted files:\n
-    """
-
-    line_counter = 0
-    message_body = ""
-    for f in sorted_files_list:
-        if line_counter < MESSAGE_LENGTH:
-            message_body = message_body + f"{f[0]} ({f[1]})\n"
-            line_counter = line_counter + 1
-        else:  # line_counter == MESSAGE_LENGTH
-            message = message_header + message_body
-            if active_user:
-                send_email_dev(username, subject, message)  # send message of MESSAGE_LENGTH lines
-            else:
-                send_email_dev(INACTIVE_USER, subject, message)
-
-            message_body = ""
-            line_counter = 0
-
-    # send remaining message
-    message = message_header + message_body
-    if active_user:
-        send_email_dev(username, subject, message)
-    else:
-        send_email_dev(INACTIVE_USER, subject, message)
 
 
 def send_emails_from_files_list(*files_lists):
@@ -192,21 +143,4 @@ def send_emails_from_files_list(*files_lists):
             for username in files_dict:
                 format_and_send_email(username, files_dict[username], username in active_users)
                 # send emails
-
-
-def send_emails_from_files_list_dev(*files_lists):
-    # reads files_lists as a tuple containing various file_lists
-    """
-    given file_list, group files by user using a dictionary, sort each list in the dictionary by
-    size, check that the username is an active user in karsanlab, format email subject and
-    message, then print the email to stdout
-    """
-    #active_users = get_active_users()  # get active users of karsan lab
-    for files_list in files_lists:
-        if files_list:
-            files_dict = make_dict_files_by_username(files_list)  # index files by user
-            for username in files_dict:
-                format_and_send_email_dev(username, files_dict[username], True)
-                # send emails
-
 
