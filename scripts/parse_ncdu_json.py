@@ -70,7 +70,7 @@ def sort_files_list_by_size(files_list):
 def write_summary_table_file(files_list, outfile_name):
     """
     Write file containing a table of file paths and sizes
-    file_metadata format: [file_path(str), size(str), username(str)]
+    file_metadata format: [file_path (str), size (str), username (str)]
     """
     with open(outfile_name, 'w') as outfile:
         writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
@@ -83,7 +83,7 @@ def write_summary_table_file(files_list, outfile_name):
 def write_summary_table_file_users(files_list, outfile_name):
     """
     Write file containing a table of file paths and sizes for improper user permissions
-    file_metadata format: [file_path(str), size(str), username(str)]
+    file_metadata format: [file_path (str), size (str), username (str)]
     """
     with open(outfile_name, 'w') as outfile:
         writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
@@ -133,6 +133,7 @@ def main():
                     total_space += size
                     directory = '/'.join(directory for directory in data['dirs'])
                     full_path = os.path.join(directory, name)
+
                     if large_file(size, size_threshold):
                         _append_file_metadata_to_list(large_files)
 

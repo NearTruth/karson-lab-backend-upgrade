@@ -9,10 +9,10 @@ import subprocess
 import humanfriendly
 
 MESSAGE_LENGTH = 50
-INACTIVE_USER = "jbridgers"
+SEND_INACTIVE_USERS_TO = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
-DEV = True
+DEV = True  # DEV mode turns off shell calls and prints emails to stdout
 TEST_ACTIVE_USER_SET = {"user2"}
 
 def get_active_users():
@@ -24,22 +24,31 @@ def get_active_users():
     if DEV: # DEV mode turns off shell calls and prints emails to stdout
         return TEST_ACTIVE_USER_SET
     else:
-        users = set()
+        active_users = set()
         try:
             getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
-            users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
+            """
+            sample getent output:
+            group:password:groupid:user1,user2,user3,user4
+            """
+            active_users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
+            """
+            output of getent_output.stdout.decode().strip().split(":")[3].split(",") for above 
+            example:
+            ["user1", "user2", "user3", "user4"]
+            """
             for user in IGNORE_USERS:
-                users.discard(user)
+                active_users.discard(user)
         except Exeption:
             pass
-        return users
+        return active_users
 
 
 def send_email(username, subject, message):
     """
     send email containing the subject and the message to {username}@bcgsc.ca
 
-    message should contain no more than 100 lines of filenames
+    message should contain no more than {MESSAGE_LENGTH} lines of filenames
     """
     
     if DEV: # DEV mode turns off shell calls and prints emails to stdout
@@ -51,19 +60,24 @@ def send_email(username, subject, message):
             pass
 
 
-def make_dict_files_by_username(file_list):
+def make_dict_files_by_username(files_list):
     """
-    input format: lst([path, size, username])
+    file_list format: lst(file_metadata)
+
+    file_metadata format: [path (str), size (str), username (str)]
+
     given list of files, return a dictionary with username as key and a sorted list of files as
     value
+    
     output format: dict{username: lst(file)}
+
     """
     user_dict = {}
-    for f in file_list:
-        if f[2] not in user_dict:
-            user_dict[f[2]] = [f]  # create key value pair
+    for file_metadata in files_list:
+        if file_metadata[2] not in user_dict:
+            user_dict[file_metadata[2]] = [file_metadata]  # create key value pair
         else:
-            user_dict[f[2]].append(f)  # update key value pair
+            user_dict[file_metadata[2]].append(file_metadata)  # update key value pair
     for username in user_dict:
         user_dict[username] = sort_files_list_by_size(user_dict[username])  # sort list
     return user_dict
@@ -82,50 +96,58 @@ def sort_files_list_by_size(files_list):
 def format_and_send_email(username, sorted_files_list, active_user=True):
     """
     format the subject and message then send the email to {username}@bcgsc.ca if the user is an
-    active user, or to {INACTIVE_USER}@bcgsc.ca if not
+    active user, or to {SEND_INACTIVE_USERS_TO}@bcgsc.ca if not
 
-    sorted_files_list format: lst([file_path, size, uid])
-
-    format files_list into the following way
+    sorted_files_list format: lst(file_metadata)
+    file_metadata format: [path (str), size (str), username (str)]
+    
+    format files_list into the following way:
     subject line:
-	Files automatically marked for deletion for {_username}
+	Please review automatically marked files for {username}
 
 	message:
 	Hi {_username},
-	please review and delete unwanted files:
+	Please review and delete unwanted files:
 
 	file1_path (size)
 	file2_path (size)
 	file3_path (size)
 	file4_path (size)
+
+    if the message is too long, then the following will be appended to the message:
+    This list has been truncated, please review additional emails
+    
+
     """
 
-    subject = f"Files automatically marked for deletion for {username}"
+    subject = f"Please review automatically marked files for {username}"
     message_header = \
     f"""Hi {username},\n
-please review and delete unwanted files:\n
+Please review and delete unwanted files:\n
 """
+    message_truncated = "\nThis list has been truncated, please review additional emails. "
     line_counter = 0
     message_body = ""
-    for f in sorted_files_list:
+    for file_metadata in sorted_files_list:
         # print(line_counter)
-        message_body = message_body + f"{f[0]} ({f[1]})\n"
+        message_body = message_body + f"{file_metadata[0]} ({file_metadata[1]})\n"
         line_counter = line_counter + 1
-        if line_counter == 50:  # line_counter == MESSAGE_LENGTH
-            message = message_header + message_body
+        if line_counter == MESSAGE_LENGTH and line_counter < len(sorted_files_list):
+            message = message_header + message_body + message_truncated
             if active_user:
-                send_email(username, subject, message)  # send message of MESSAGE_LENGTH lines
+                send_email(username, subject, messagse)
             else:
-                send_email(INACTIVE_USER, subject, message)
+                send_email(SEND_INACTIVE_USERS_TO, subject, message)
             message_body = ""
             line_counter = 0
 
     # send remaining message
-    message = message_header + message_body
-    if active_user:
-        send_email(username, subject, message)
-    else:
-        send_email(INACTIVE_USER, subject, message)
+    if message_body:
+        message = message_header + message_body
+        if active_user:
+            send_email(username, subject, message)
+        else:
+            send_email(SEND_INACTIVE_USERS_TO, subject, message)
 
 
 
