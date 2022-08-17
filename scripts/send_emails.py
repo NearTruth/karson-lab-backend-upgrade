@@ -12,36 +12,34 @@ MESSAGE_LENGTH = 50
 SEND_INACTIVE_USERS_TO = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
-DEV = True  # DEV mode turns off shell calls and prints emails to stdout
+DEV = True  # DEV mode sends all emails to {DEV_SEND_EMAILS_TO}@bcgsc.ca
 TEST_ACTIVE_USER_SET = {"user2"}
+DEV_SEND_EMAILS_TO = "jbridgers"
 
 def get_active_users():
     """
     returns the usernames of active users of karsanlab by parsing the output of getent group
     karsanlab as a set
     """
-    
-    if DEV: # DEV mode turns off shell calls and prints emails to stdout
-        return TEST_ACTIVE_USER_SET
-    else:
-        active_users = set()
-        try:
-            getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
-            """
-            sample getent output:
-            group:password:groupid:user1,user2,user3,user4
-            """
-            active_users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
-            """
-            output of getent_output.stdout.decode().strip().split(":")[3].split(",") for above 
-            example:
-            ["user1", "user2", "user3", "user4"]
-            """
-            for user in IGNORE_USERS:
-                active_users.discard(user)
-        except Exeption:
-            pass
-        return active_users
+
+    active_users = set()
+    try:
+        getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
+        """
+        sample getent output:
+        group:password:groupid:user1,user2,user3,user4
+        """
+        active_users = set(getent_output.stdout.decode().strip().split(":")[3].split(","))
+        """
+        output of getent_output.stdout.decode().strip().split(":")[3].split(",") for above 
+        example:
+        ["user1", "user2", "user3", "user4"]
+        """
+        for user in IGNORE_USERS:
+            active_users.discard(user)
+    except Exeption:
+        pass
+    return active_users
 
 
 def send_email(username, subject, message):
@@ -52,7 +50,11 @@ def send_email(username, subject, message):
     """
     
     if DEV: # DEV mode turns off shell calls and prints emails to stdout
-        print(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca")
+        try:
+            subprocess.run(f"printf '{message}' | mail -s '{subject}' {DEV_SEND_EMAILS_TO}@bcgsc.ca",
+                           shell=True)
+        except Exception:  # handle exceptions
+            pass
     else:
         try:  # be careful shell=True is a security risk
             subprocess.run(f"printf '{message}' | mail -s '{subject}' {username}@bcgsc.ca", shell=True)
