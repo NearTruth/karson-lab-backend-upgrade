@@ -13,7 +13,6 @@ SEND_INACTIVE_USERS_TO = "jbridgers"
 IGNORE_USERS = ("bioapps", "jgrants", "chmay")
 
 DEV = True  # DEV mode sends all emails to {DEV_SEND_EMAILS_TO}@bcgsc.ca
-TEST_ACTIVE_USER_SET = {"user2"}
 DEV_SEND_EMAILS_TO = "jbridgers"
 
 def get_active_users():
@@ -49,7 +48,7 @@ def send_email(username, subject, message):
     message should contain no more than {MESSAGE_LENGTH} lines of filenames
     """
     
-    if DEV: # DEV mode turns off shell calls and prints emails to stdout
+    if DEV: # DEV mode sends all emails to {DEV_SEND_EMAILS_TO}@bcgsc.ca
         try:
             subprocess.run(f"printf '{message}' | mail -s '{subject}' {DEV_SEND_EMAILS_TO}@bcgsc.ca",
                            shell=True)
