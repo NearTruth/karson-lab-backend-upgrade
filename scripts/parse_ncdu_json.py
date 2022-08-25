@@ -14,6 +14,8 @@ import json
 import os
 import pwd
 import stat
+from send_emails import send_emails_from_files_list
+
 
 from datetime import datetime, timedelta
 
@@ -66,27 +68,46 @@ def sort_files_list_by_size(files_list):
 
 
 def write_summary_table_file(files_list, outfile_name):
-    """Write file containing a table of file paths and sizes"""
+    """
+    Write file containing a table of file paths and sizes
+    file_metadata format: [file_path (str), size (str), username (str)]
+    """
     with open(outfile_name, 'w') as outfile:
         writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
         writer.writerow(TABLE_HEADER)
         if files_list:
-            for file in sort_files_list_by_size(files_list):
-                writer.writerow(file)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
+            for file_metadata in sort_files_list_by_size(files_list):
+                writer.writerow(file_metadata[0:1])
+
+
+def write_summary_table_file_users(files_list, outfile_name):
+    """
+    Write file containing a table of file paths and sizes for improper user permissions
+    file_metadata format: [file_path (str), size (str), username (str)]
+    """
+    with open(outfile_name, 'w') as outfile:
+        writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
+        writer.writerow(['file_path', 'file_owner'])
+        if files_list:
+            for file_metadata in sort_files_list_by_size(files_list):
+                writer.writerow([file_metadata[0], file_metadata[2]])
 
 
 def get_user_owner_name(uid):
-    """return the username of the uid (untested)"""
+    """return the username of the uid"""
     return pwd.getpwuid(uid).pw_name
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-
 
 def main():
+    # define helper function to write to files
+    def _append_file_metadata_to_list(files_list):
+        """
+        appends [path, size, username] to the files_metadata_list
+        """
+        username = get_user_owner_name(user_owner)
+        files_list.append(
+            [full_path, humanfriendly.format_size(size, binary=True), username]
+        )
+
     # Parse arguments
     args = _parse_args()
     size_threshold = args.size
@@ -98,6 +119,7 @@ def main():
     old_intermediate_files = []
     improper_permissions_files = []
     total_space = 0
+
 
     # Parse JSON
     with open(input_json, 'r') as input_file:
@@ -111,40 +133,40 @@ def main():
                     total_space += size
                     directory = '/'.join(directory for directory in data['dirs'])
                     full_path = os.path.join(directory, name)
+
                     if large_file(size, size_threshold):
-                        large_files.append(
-                            [full_path, humanfriendly.format_size(size, binary=True)]
-                        )
+                        _append_file_metadata_to_list(large_files)
+
                     if old_intermediate_file(name, date, days_window):
-                        old_intermediate_files.append(
-                            [full_path, humanfriendly.format_size(size, binary=True)]
-                        )
+                        _append_file_metadata_to_list(old_intermediate_files)
+
                     if group_owner == USERS_GROUP_ID:
-                        # Get the owner of the file
-                        username = pwd.getpwuid(user_owner).pw_name
-                        improper_permissions_files.append([full_path, username])
+                        _append_file_metadata_to_list(improper_permissions_files)
+
             # Excluded paths (e.g., .snapshot) are still written to the JSON
             # But lack a "mode" key. Account for this.
             except KeyError:
                 pass
 
+
     # Write the summary files
     large_files_outfile = f'{input_json}.large_files.tsv'
     write_summary_table_file(large_files, large_files_outfile)
+
     old_intermediate_files_outfile = f'{input_json}.old_intermediate_files_for_possible_deletion.tsv'
     write_summary_table_file(old_intermediate_files, old_intermediate_files_outfile)
+
     summary_outfile = f'{input_json}.summary.tsv'
     with open(summary_outfile, 'w') as outfile:
         outfile.write(
             f'Total space consumed:\t'
             f'{humanfriendly.format_size(total_space, binary=True)}\n')
+
     improper_permissions_outfile = f'{input_json}.files_set_to_user_group.tsv'
-    with open(improper_permissions_outfile, 'w') as outfile:
-        writer = csv.writer(outfile, delimiter='\t', lineterminator='\n')
-        writer.writerow(['file_path', 'file_owner'])
-        if improper_permissions_files:
-            for file in improper_permissions_files:
-                writer.writerow(file)
+    write_summary_table_file_users(improper_permissions_files, improper_permissions_outfile)
+
+    # send emails
+    send_emails_from_files_list(large_files, old_intermediate_files, improper_permissions_files)
 
 
 def _parse_args():
