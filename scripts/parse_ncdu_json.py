@@ -77,7 +77,7 @@ def write_summary_table_file(files_list, outfile_name):
         writer.writerow(TABLE_HEADER)
         if files_list:
             for file_metadata in sort_files_list_by_size(files_list):
-                writer.writerow(file_metadata[0:1])
+                writer.writerow(file_metadata[0:2])
 
 
 def write_summary_table_file_users(files_list, outfile_name):
@@ -96,6 +96,7 @@ def write_summary_table_file_users(files_list, outfile_name):
 def get_user_owner_name(uid):
     """return the username of the uid"""
     return pwd.getpwuid(uid).pw_name
+
 
 def main():
     # define helper function to write to files

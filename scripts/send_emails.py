@@ -23,7 +23,7 @@ def get_active_users():
 
     active_users = set()
     try:
-        getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout.subprocess.PIPE)
+        getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout=subprocess.PIPE)
         """
         sample getent output:
         group:password:groupid:user1,user2,user3,user4
@@ -36,7 +36,7 @@ def get_active_users():
         """
         for user in IGNORE_USERS:
             active_users.discard(user)
-    except Exeption:
+    except Exception:
         pass
     return active_users
 
