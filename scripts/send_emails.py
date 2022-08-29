@@ -20,7 +20,6 @@ def get_active_users():
     returns the usernames of active users of karsanlab by parsing the output of getent group
     karsanlab as a set
     """
-
     active_users = set()
     try:
         getent_output = subprocess.run(["getent", "group", "karsanlab"], stdout=subprocess.PIPE)
@@ -48,7 +47,7 @@ def send_email(username, subject, message):
     message should contain no more than {MESSAGE_LENGTH} lines of filenames
     """
     
-    if DEV: # DEV mode sends all emails to {DEV_SEND_EMAILS_TO}@bcgsc.ca
+    if DEV:  # DEV mode sends all emails to {DEV_SEND_EMAILS_TO}@bcgsc.ca
         try:
             subprocess.run(f"printf '{message}' | mail -s '{subject}' {DEV_SEND_EMAILS_TO}@bcgsc.ca",
                            shell=True)
@@ -94,18 +93,26 @@ def sort_files_list_by_size(files_list):
     return sorted_list
 
 
-def format_and_send_email(username, sorted_files_list, active_user=True):
+def format_and_send_email(username, sorted_files_list, files_list_reason, active_user=True):
     """
     format the subject and message then send the email to {username}@bcgsc.ca if the user is an
     active user, or to {SEND_INACTIVE_USERS_TO}@bcgsc.ca if not
 
     sorted_files_list format: lst(file_metadata)
     file_metadata format: [path (str), size (str), username (str)]
-    
+
+    files_list_reason
+
     format files_list into the following way:
     subject line:
-	Please review automatically marked files for {username}
+	Please review automatically marked {files_list_reason} for {username}
 
+    possible reasons:
+    "large files (>10GB)"
+    "unnecesary intermediate files"
+    "files with improper permissions"
+
+    
 	message:
 	Hi {_username},
 	Please review and delete unwanted files:
@@ -121,7 +128,7 @@ def format_and_send_email(username, sorted_files_list, active_user=True):
 
     """
 
-    subject = f"Please review automatically marked files for {username}"
+    subject = f"Please review automatically marked {files_list_reason} for {username}"
     message_header = \
     f"""Hi {username},\n
 Please review and delete unwanted files:\n
@@ -152,18 +159,24 @@ Please review and delete unwanted files:\n
 
 
 
-def send_emails_from_files_list(*files_lists):
-    # reads files_lists as a tuple containing various file_lists
+def send_emails_from_files_list(*files_lists_and_reasons):
     """
+    reads files_lists as a tuple containing a tuple containing various file_lists and the
+    reason the files were flagged
+
+    input format: tuple(tuple(lst([path (str), size (str), username (str)]), reason (str)), )
+
     given file_list, group files by user using a dictionary, sort each list in the dictionary by 
     size, check that the username is an active user in karsanlab, format email subject and 
     message, then send the email
     """
+
     active_users = get_active_users()  # get active users of karsan lab
-    for files_list in files_lists:
-        if files_list:
-            files_dict = make_dict_files_by_username(files_list)  # index files by user
+    for files_list_and_reason in files_lists_and_reasons:
+        if files_list_and_reason[0]:
+            files_dict = make_dict_files_by_username(files_list_and_reason[0])  # index files by user
             for username in files_dict:
-                format_and_send_email(username, files_dict[username], username in active_users)
+                format_and_send_email(username, files_dict[username], files_list_and_reason[1],
+                    username in active_users)
                 # send emails
 
