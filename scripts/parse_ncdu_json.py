@@ -167,7 +167,9 @@ def main():
     write_summary_table_file_users(improper_permissions_files, improper_permissions_outfile)
 
     # send emails
-    send_emails_from_files_list(large_files, old_intermediate_files, improper_permissions_files)
+    send_emails_from_files_list((large_files, "large files (>10GB)"), 
+                                (old_intermediate_files, "unnecesary intermediate files"),
+                                (improper_permissions_files, "files with improper permissions"))
 
 
 def _parse_args():
