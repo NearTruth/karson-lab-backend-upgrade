@@ -133,23 +133,18 @@ def format_and_send_email(username, sorted_files_list, files_list_reason, active
     f"""Hi {username},\n
 Please review and delete unwanted files:\n
 """
-    message_truncated = "\nThis list has been truncated, please review additional emails. "
+    message_truncated = "\nThis list has been truncated. "
     line_counter = 0
     message_body = ""
     for file_metadata in sorted_files_list:
-        # print(line_counter)
+        # create message
         message_body = message_body + f"{file_metadata[0]} ({file_metadata[1]})\n"
         line_counter = line_counter + 1
         if line_counter == MESSAGE_LENGTH and line_counter < len(sorted_files_list):
             message = message_header + message_body + message_truncated
-            if active_user:
-                send_email(username, subject, messagse)
-            else:
-                send_email(SEND_INACTIVE_USERS_TO, subject, message)
-            message_body = ""
-            line_counter = 0
+            break
 
-    # send remaining message
+    # send message
     if message_body:
         message = message_header + message_body
         if active_user:
